@@ -1,198 +1,221 @@
-// ===================================================================
-// Pixel Pal — a tiny digital pet
-// ===================================================================
+const { useState, useEffect } = React;
 
-/** Actions the player can perform on the pet. */
-enum Action {
-  EAT = "EAT",
-  PLAY = "PLAY",
-  SLEEP = "SLEEP",
+interface StatBarProps {
+  label: string;
+  value: number;
+  icon: string;
+  reverse?: boolean;
 }
 
-/** Every mood the pet can be in. */
-enum PetMood {
-  HAPPY = "HAPPY",
-  EXCITED = "EXCITED",
-  CONTENT = "CONTENT",
-  SAD = "SAD",
-  TIRED = "TIRED",
-  SICK = "SICK",
-  HUNGRY = "HUNGRY",
+function getStatColorClass(value: number): string {
+  if (value >= 70) return "high";
+  if (value >= 40) return "medium";
+  return "low";
 }
 
-/** One emoji per mood, keyed by the PetMood enum. */
-const moodEmojiMap: Record<PetMood, string> = {
-  [PetMood.HAPPY]: "😊",
-  [PetMood.EXCITED]: "🤩",
-  [PetMood.CONTENT]: "🙂",
-  [PetMood.SAD]: "😢",
-  [PetMood.TIRED]: "🥱",
-  [PetMood.SICK]: "🤒",
-  [PetMood.HUNGRY]: "🍽️",
-};
+function StatBar({ label, value, icon, reverse = false }: StatBarProps) {
+  // `reverse` only affects color semantics (e.g. high Hunger = bad = red),
+  // it must NEVER change the displayed/actual value.
+  const colorClass = getStatColorClass(reverse ? 100 - value : value);
+  return (
+    <div className="stat-bar stat">
+      <div className="stat-header">
+        <div className="stat-label">
+          <span className="stat-icon">{icon}</span>
+          <span className="stat-name">{label}</span>
+        </div>
+        <span className="stat-value">{Math.round(value)}%</span>
+      </div>
+      <div className="stat-progress">
+        <div
+          className={`stat-fill ${colorClass}`}
+          style={{ width: `${value}%` }}
+        />
+      </div>
+    </div>
+  );
+}
 
-/** A friendly label per mood, keyed by the PetMood enum. */
-const moodLabelMap: Record<PetMood, string> = {
-  [PetMood.HAPPY]: "Happy",
-  [PetMood.EXCITED]: "Excited",
-  [PetMood.CONTENT]: "Content",
-  [PetMood.SAD]: "Sad",
-  [PetMood.TIRED]: "Tired",
-  [PetMood.SICK]: "Sick",
-  [PetMood.HUNGRY]: "Hungry",
-};
+enum PetAction {
+  NONE,
+  EAT,
+  PLAY,
+  SLEEP,
+}
 
-interface PetStats {
+interface Pet {
+  name: string;
+  happiness: number;
   hunger: number;
   energy: number;
-  happiness: number;
+  species: string;
 }
 
-// ---------------------------------------------------------------
-// State
-// ---------------------------------------------------------------
+enum PetMood {
+  HAPPY,
+  EXCITED,
+  CONTENT,
+  SAD,
+  TIRED,
+  SICK,
+  HUNGRY,
+}
 
-let petName = "";
-
-const stats: PetStats = {
-  hunger: 0,
-  energy: 100,
-  happiness: 100,
+export const STAT_DECAY_RATES = {
+  hunger: 10,
+  happiness: 5,
+  energy: 5,
 };
 
-const STAT_STEP = 10;
-const IDLE_TICK_MS = 4000; // how often the pet drifts while idle
-const IDLE_DRIFT = 6; // amount it drifts per tick
+const UPDATE_INTERVAL = 30000;
 
-let idleTimer: ReturnType<typeof setInterval> | undefined;
-
-// ---------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------
-
-function clamp(value: number, min = 0, max = 100): number {
-  return Math.min(max, Math.max(min, value));
-}
-
-/** Determine the pet's current mood from its stats. */
-function computeMood(s: PetStats): PetMood {
-  if (s.hunger > 90 && s.energy < 15) return PetMood.SICK;
-  if (s.hunger > 70) return PetMood.HUNGRY;
-  if (s.energy < 30) return PetMood.TIRED;
-  if (s.happiness < 30) return PetMood.SAD;
-  if (s.happiness > 80 && s.energy > 70) return PetMood.EXCITED;
-  if (s.happiness > 60) return PetMood.HAPPY;
+export function calculatePetMood(pt: Pet): PetMood {
+  const { hunger, happiness, energy } = pt;
+  if (hunger > 70) return PetMood.HUNGRY;
+  if (energy < 30) return PetMood.TIRED;
+  if (happiness < 30) return PetMood.SAD;
+  if (happiness > 80 && energy > 70) return PetMood.EXCITED;
+  if (happiness > 60) return PetMood.HAPPY;
   return PetMood.CONTENT;
 }
 
-// ---------------------------------------------------------------
-// DOM references
-// ---------------------------------------------------------------
+const moodEmojiMap: Record<PetMood, string> = {
+  [PetMood.HAPPY]: "😺",
+  [PetMood.EXCITED]: "😻",
+  [PetMood.CONTENT]: "😸",
+  [PetMood.SAD]: "😿",
+  [PetMood.TIRED]: "🥱",
+  [PetMood.SICK]: "🤢",
+  [PetMood.HUNGRY]: "😹",
+};
 
-const introView = document.getElementById("intro-view") as HTMLElement;
-const gameView = document.getElementById("game-view") as HTMLElement;
-const nameForm = document.getElementById("name-form") as HTMLFormElement;
-const nameInput = document.getElementById("pet-name") as HTMLInputElement;
+function usePet({ isGameStarted }: { isGameStarted: boolean }) {
+  const [pet, setPet] = useState<Pet>({
+    name: "",
+    happiness: 100,
+    hunger: 0,
+    energy: 100,
+    species: "Luxora Cat",
+  });
 
-const petNameEl = document.querySelector(".pet-name") as HTMLElement;
-const moodEmojiEl = document.getElementById("mood-emoji") as HTMLElement;
-const moodTextEl = document.getElementById("mood-text") as HTMLElement;
+  useEffect(() => {
+    if (!isGameStarted) return;
+    const interval = setInterval(() => {
+      setPet((prev) => ({
+        ...prev,
+        happiness: Math.max(prev.happiness - 5, 0),
+        hunger: Math.min(prev.hunger + 8, 100),
+        energy: Math.min(prev.energy + 5, 100), // idle pet rests -> energy climbs toward 100
+      }));
+    }, UPDATE_INTERVAL);
+    return () => clearInterval(interval);
+  }, [isGameStarted]);
 
-const hungerStatEl = document.getElementById("hunger-stat") as HTMLElement;
-const energyStatEl = document.getElementById("energy-stat") as HTMLElement;
-const happinessStatEl = document.getElementById("happiness-stat") as HTMLElement;
+  const doAction = (action: PetAction) => {
+    setPet((prev) => {
+      let newPet = { ...prev };
+      switch (action) {
+        case PetAction.EAT:
+          newPet.hunger = Math.max(newPet.hunger - STAT_DECAY_RATES.hunger, 0);
+          newPet.energy = Math.min(newPet.energy + STAT_DECAY_RATES.energy, 100);
+          break;
+        case PetAction.PLAY:
+          newPet.energy = Math.max(newPet.energy - STAT_DECAY_RATES.energy, 0);
+          newPet.happiness = Math.min(newPet.happiness + STAT_DECAY_RATES.happiness, 100);
+          break;
+        case PetAction.SLEEP:
+          newPet.hunger = Math.min(newPet.hunger + STAT_DECAY_RATES.hunger, 100);
+          newPet.energy = Math.min(newPet.energy + STAT_DECAY_RATES.energy * 1.5, 100);
+          break;
+      }
+      return newPet;
+    });
+  };
 
-const eatBtn = document.getElementById("eat-action") as HTMLButtonElement;
-const playBtn = document.getElementById("play-action") as HTMLButtonElement;
-const sleepBtn = document.getElementById("sleep-action") as HTMLButtonElement;
+  const setName = (name: string) => {
+    setPet((prev) => ({ ...prev, name }));
+  };
 
-// ---------------------------------------------------------------
-// Rendering
-// ---------------------------------------------------------------
-
-function updateStatEl(container: HTMLElement, value: number): void {
-  const valueEl = container.querySelector(".stat-value") as HTMLElement;
-  const fillEl = container.querySelector(".stat__fill") as HTMLElement | null;
-  valueEl.textContent = String(value);
-  if (fillEl) fillEl.style.width = `${value}%`;
+  return { pet, doAction, setName };
 }
 
-function render(): void {
-  updateStatEl(hungerStatEl, stats.hunger);
-  updateStatEl(energyStatEl, stats.energy);
-  updateStatEl(happinessStatEl, stats.happiness);
+export function PetGame() {
+  const [isGameStarted, setGameStarted] = useState(false);
+  const { pet, doAction, setName } = usePet({ isGameStarted });
+  const [fact, setFact] = useState("Loading a luxurious fact for your companion...");
 
-  const mood = computeMood(stats);
-  moodEmojiEl.textContent = moodEmojiMap[mood];
-  moodTextEl.textContent = moodLabelMap[mood];
+  useEffect(() => {
+    fetch("https://cat-facts-api.freecodecamp.rocks/api/catfacts/random")
+      .then(res => res.json())
+      .then(data => setFact(data.fact || "Every pet deserves a palace."))
+      .catch(() => setFact("In the realm of digital elegance, care is eternal."));
+  }, []);
+
+  const startGame = () => {
+    const input = document.getElementById("pet-name") as HTMLInputElement;
+    const name = input?.value.trim();
+    if (!name) return;
+    setName(name);
+    setGameStarted(true);
+  };
+
+  const currentMood = calculatePetMood(pet);
+
+  return React.createElement('main', null,
+    React.createElement('header', null,
+      React.createElement('h1', null, 'LUXORA'),
+      React.createElement('p', null, 'Where digital souls find eternal elegance')
+    ),
+    isGameStarted && React.createElement('section', { className: "base-container game-container" },
+      React.createElement('div', { className: "pet-screen" },
+        React.createElement('div', { className: "pet-sprite" }, moodEmojiMap[currentMood]),
+        React.createElement('h2', { className: "pet-name" }, pet.name)
+      ),
+      React.createElement('div', { className: "pet-buttons" },
+        React.createElement('button', {
+          id: "eat-action",
+          className: "pet-button",
+          onClick: () => doAction(PetAction.EAT)
+        }, "FEED"),
+        React.createElement('button', {
+          id: "play-action",
+          className: "pet-button",
+          onClick: () => doAction(PetAction.PLAY)
+        }, "PLAY"),
+        React.createElement('button', {
+          id: "sleep-action",
+          className: "pet-button",
+          onClick: () => doAction(PetAction.SLEEP)
+        }, "REST")
+      )
+    ),
+    isGameStarted && React.createElement('section', { className: "stats-grid" },
+      React.createElement(StatBar, { label: "Hunger", value: pet.hunger, icon: "🍖", reverse: true }),
+      React.createElement(StatBar, { label: "Happiness", value: pet.happiness, icon: "💎" }),
+      React.createElement(StatBar, { label: "Energy", value: pet.energy, icon: "🌟" })
+    ),
+    React.createElement('section', { className: "base-container info-panel" },
+      !isGameStarted ?
+        React.createElement('form', { className: "start-questions" },
+          React.createElement('label', { htmlFor: "pet-name" }, "Bestow a name upon your eternal companion"),
+          React.createElement('input', {
+            id: "pet-name",
+            type: "text",
+            placeholder: "Fitzgerald",
+            required: true
+          }),
+          React.createElement('button', {
+            id: "set-name-btn",
+            type: "button",
+            onClick: startGame
+          }, "Begin the Legacy")
+        ) :
+        React.createElement('div', { id: "hud" },
+          React.createElement('p', null, `Species: ${pet.species}`),
+          React.createElement('p', { id: "pet-fact" },
+            React.createElement('strong', null, "Whispers from the Realm: "), fact
+          )
+        )
+    )
+  );
 }
-
-// ---------------------------------------------------------------
-// Actions
-// ---------------------------------------------------------------
-
-function applyAction(action: Action): void {
-  switch (action) {
-    case Action.EAT:
-      stats.hunger = clamp(stats.hunger - STAT_STEP);
-      stats.energy = clamp(stats.energy + STAT_STEP);
-      break;
-    case Action.PLAY:
-      stats.energy = clamp(stats.energy - STAT_STEP);
-      stats.happiness = clamp(stats.happiness + STAT_STEP);
-      break;
-    case Action.SLEEP:
-      stats.hunger = clamp(stats.hunger + STAT_STEP);
-      stats.energy = clamp(stats.energy + STAT_STEP);
-      break;
-  }
-  render();
-}
-
-// ---------------------------------------------------------------
-// Idle drift — the pet's needs change if you leave it alone
-// ---------------------------------------------------------------
-
-function startIdleDrift(): void {
-  if (idleTimer) clearInterval(idleTimer);
-  idleTimer = setInterval(() => {
-    stats.hunger = clamp(stats.hunger + IDLE_DRIFT);
-    stats.energy = clamp(stats.energy + IDLE_DRIFT);
-    stats.happiness = clamp(stats.happiness - IDLE_DRIFT);
-    render();
-  }, IDLE_TICK_MS);
-}
-
-// ---------------------------------------------------------------
-// View transition
-// ---------------------------------------------------------------
-
-function startGame(name: string): void {
-  petName = name;
-  petNameEl.textContent = petName;
-
-  introView.classList.add("view--hidden");
-  gameView.classList.remove("view--hidden");
-
-  eatBtn.disabled = false;
-  playBtn.disabled = false;
-  sleepBtn.disabled = false;
-
-  render();
-  startIdleDrift();
-}
-
-// ---------------------------------------------------------------
-// Event wiring
-// ---------------------------------------------------------------
-
-nameForm.addEventListener("submit", (event: Event) => {
-  event.preventDefault();
-  const name = nameInput.value.trim();
-  if (!name) return;
-  startGame(name);
-});
-
-eatBtn.addEventListener("click", () => applyAction(Action.EAT));
-playBtn.addEventListener("click", () => applyAction(Action.PLAY));
-sleepBtn.addEventListener("click", () => applyAction(Action.SLEEP));
