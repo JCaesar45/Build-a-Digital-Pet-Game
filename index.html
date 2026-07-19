@@ -1,102 +1,22 @@
 <html lang="en">
-
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pixel Pal — Digital Pet</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css" />
-</head>
-
-<body>
-
-  <main class="device">
-    <div class="device__label">PIXEL&nbsp;PAL</div>
-
-    <div class="screen">
-
-      <!-- VIEW ONE: naming form -->
-      <section id="intro-view" class="view">
-        <p class="screen__eyebrow">NEW SAVE FILE</p>
-        <h1 class="screen__title">Who's&nbsp;joining&nbsp;you?</h1>
-        <p class="screen__hint">Give your companion a name to boot it up.</p>
-
-        <form id="name-form" novalidate>
-          <label class="visually-hidden" for="pet-name">Pet name</label>
-          <input type="text" id="pet-name" name="pet-name" placeholder="e.g. Mochi" autocomplete="off" required />
-          <button type="submit" class="btn btn--primary">Boot Up</button>
-        </form>
-      </section>
-
-      <!-- VIEW TWO: the living pet -->
-      <section id="game-view" class="view view--hidden">
-
-        <header class="pet-header">
-          <p class="screen__eyebrow">NOW LOADED</p>
-          <h1 class="pet-name"></h1>
-          <div class="mood-badge">
-            <span id="mood-emoji" class="mood-badge__emoji" aria-hidden="true"></span>
-            <span id="mood-text" class="mood-badge__text"></span>
-          </div>
-        </header>
-
-        <div class="stats" role="group" aria-label="Pet stats">
-          <div class="stat" id="hunger-stat">
-            <div class="stat__row">
-              <span class="stat-label">Hunger</span>
-              <span class="stat-value">0</span>
-            </div>
-            <div class="stat__track">
-              <div class="stat__fill stat__fill--hunger" style="width: 0%"></div>
-            </div>
-          </div>
-
-          <div class="stat" id="energy-stat">
-            <div class="stat__row">
-              <span class="stat-label">Energy</span>
-              <span class="stat-value">100</span>
-            </div>
-            <div class="stat__track">
-              <div class="stat__fill stat__fill--energy" style="width: 100%"></div>
-            </div>
-          </div>
-
-          <div class="stat" id="happiness-stat">
-            <div class="stat__row">
-              <span class="stat-label">Happiness</span>
-              <span class="stat-value">100</span>
-            </div>
-            <div class="stat__track">
-              <div class="stat__fill stat__fill--happiness" style="width: 100%"></div>
-            </div>
-          </div>
-        </div>
-
-      </section>
-
-    </div>
-
-    <!-- physical-looking action buttons, always part of the device shell -->
-    <div class="controls">
-      <button id="eat-action" class="btn btn--pad" disabled>
-        <span class="btn__icon" aria-hidden="true">🍖</span>
-        <span class="btn__label">Eat</span>
-      </button>
-      <button id="play-action" class="btn btn--pad" disabled>
-        <span class="btn__icon" aria-hidden="true">🎾</span>
-        <span class="btn__label">Play</span>
-      </button>
-      <button id="sleep-action" class="btn btn--pad" disabled>
-        <span class="btn__icon" aria-hidden="true">💤</span>
-        <span class="btn__label">Sleep</span>
-      </button>
-    </div>
-
-  </main>
-
-  <script src="index.js"></script>
-</body>
-
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Luxora • Eternal Companion</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tektur:wght@400..900&family=Playfair+Display:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.development.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.development.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.5/babel.min.js"></script>
+    <script data-plugins="transform-modules-umd" type="text/babel" src="index.tsx"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script data-plugins="transform-modules-umd" type="text/babel" data-presets="react" data-type="module">
+      import { PetGame } from './index.tsx';
+      ReactDOM.createRoot(document.getElementById('root')).render(<PetGame />);
+    </script>
+  </body>
 </html>
