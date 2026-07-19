@@ -1,0 +1,341 @@
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PixelPal - Digital Pet</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+    :root {
+      --bg-color: #0a0a2a;
+      --accent: #00ffcc;
+      --text: #ffffff;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #0a0a2a 0%, #1a0033 100%);
+      color: var(--text);
+      font-family: 'Press Start 2P', system-ui;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    .container {
+      max-width: 800px;
+      width: 100%;
+      padding: 20px;
+    }
+
+    .screen {
+      background: rgba(10, 10, 42, 0.95);
+      border: 4px solid var(--accent);
+      border-radius: 8px;
+      padding: 30px;
+      box-shadow: 0 0 30px rgba(0, 255, 204, 0.5);
+    }
+
+    .title {
+      text-align: center;
+      font-size: 2.2rem;
+      margin-bottom: 30px;
+      color: var(--accent);
+      text-shadow: 0 0 10px var(--accent);
+      letter-spacing: 4px;
+    }
+
+    /* Naming Screen */
+    #naming-screen {
+      text-align: center;
+    }
+
+    #pet-form {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    #pet-name {
+      width: 70%;
+      padding: 15px;
+      font-size: 1.1rem;
+      background: #1a1a4a;
+      border: 3px solid var(--accent);
+      color: white;
+      font-family: 'Press Start 2P', system-ui;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    button {
+      background: #ff00aa;
+      color: white;
+      border: 3px solid #fff;
+      padding: 12px 30px;
+      font-size: 1.1rem;
+      font-family: 'Press Start 2P', system-ui;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
+    button:hover {
+      background: #ff66cc;
+      transform: scale(1.05);
+    }
+
+    /* Game Screen */
+    #game-screen {
+      display: none;
+    }
+
+    .pet-display {
+      text-align: center;
+      margin: 20px 0;
+      min-height: 180px;
+    }
+
+    .pet-emoji {
+      font-size: 7rem;
+      transition: all 0.4s ease;
+      display: block;
+      margin: 0 auto 15px;
+    }
+
+    .pet-name {
+      font-size: 1.5rem;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+
+    .mood {
+      font-size: 1.1rem;
+      margin-bottom: 25px;
+    }
+
+    .stats {
+      display: flex;
+      justify-content: space-around;
+      margin: 30px 0;
+      gap: 15px;
+    }
+
+    .stat {
+      background: rgba(26, 26, 74, 0.8);
+      border: 3px solid #00ffcc;
+      padding: 15px;
+      width: 30%;
+      text-align: center;
+      border-radius: 6px;
+    }
+
+    .stat-label {
+      font-size: 0.9rem;
+      color: #aaccff;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 2.2rem;
+      font-weight: bold;
+      color: #00ff88;
+    }
+
+    .actions {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .action-btn {
+      flex: 1;
+      max-width: 180px;
+      padding: 18px 10px;
+      font-size: 1rem;
+      background: linear-gradient(#4400aa, #220066);
+    }
+
+    .action-btn:hover {
+      background: linear-gradient(#6600ff, #4400aa);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <!-- Naming Screen -->
+    <div id="naming-screen" class="screen">
+      <div class="title">PIXELPAL</div>
+      <h2>NAME YOUR PET</h2>
+      <form id="pet-form">
+        <input type="text" id="pet-name" placeholder="ENTER PET NAME" maxlength="12">
+        <button id="start-btn" type="button">START ADVENTURE</button>
+      </form>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" class="screen">
+      <div class="title">PIXELPAL</div>
+
+      <div class="pet-display">
+        <div id="pet-emoji" class="pet-emoji">🐱</div>
+        <div id="pet-name-display" class="pet-name"></div>
+        <div id="mood" class="mood">Content</div>
+      </div>
+
+      <div class="stats" id="stats-container">
+        <!-- Populated by JS -->
+      </div>
+
+      <div class="actions">
+        <button id="eat-action" class="action-btn">🍎 EAT</button>
+        <button id="play-action" class="action-btn">⚽ PLAY</button>
+        <button id="sleep-action" class="action-btn">🌙 SLEEP</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // PetMood Enum
+    var PetMood;
+    (function(PetMood) {
+      PetMood["HAPPY"] = "Happy";
+      PetMood["EXCITED"] = "Excited";
+      PetMood["CONTENT"] = "Content";
+      PetMood["SAD"] = "Sad";
+      PetMood["TIRED"] = "Tired";
+      PetMood["SICK"] = "Sick";
+      PetMood["HUNGRY"] = "Hungry";
+    })(PetMood || (PetMood = {}));
+    // Mood to emoji mapping (Record<PetMood, string>)
+    const moodEmojis = {
+      [PetMood.HAPPY]: "😺",
+      [PetMood.EXCITED]: "🤩",
+      [PetMood.CONTENT]: "🐱",
+      [PetMood.SAD]: "😿",
+      [PetMood.TIRED]: "🥱",
+      [PetMood.SICK]: "🤢",
+      [PetMood.HUNGRY]: "😣"
+    };
+    let petName = "";
+    let hunger = 0;
+    let energy = 100;
+    let happiness = 100;
+    let lastUpdate = Date.now();
+    const namingScreen = document.getElementById('naming-screen');
+    const gameScreen = document.getElementById('game-screen');
+    const petNameInput = document.getElementById('pet-name');
+    const startBtn = document.getElementById('start-btn');
+    const petNameDisplay = document.getElementById('pet-name-display');
+    const petEmojiEl = document.getElementById('pet-emoji');
+    const moodEl = document.getElementById('mood');
+
+    function clamp(val, min, max) {
+      return Math.max(min, Math.min(max, val));
+    }
+
+    function createStats() {
+      const container = document.getElementById('stats-container');
+      container.innerHTML = `
+                <div class="stat">
+                    <div class="stat-label">HUNGER</div>
+                    <div class="stat-value" id="hunger-value">0</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">ENERGY</div>
+                    <div class="stat-value" id="energy-value">100</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">HAPPINESS</div>
+                    <div class="stat-value" id="happiness-value">100</div>
+                </div>
+            `;
+    }
+
+    function updateStats() {
+      document.getElementById('hunger-value').textContent = Math.round(hunger);
+      document.getElementById('energy-value').textContent = Math.round(energy);
+      document.getElementById('happiness-value').textContent = Math.round(happiness);
+    }
+
+    function getCurrentMood() {
+      if (hunger > 70) return PetMood.HUNGRY;
+      if (energy < 30) return PetMood.TIRED;
+      if (happiness < 30) return PetMood.SAD;
+      if (happiness > 80 && energy > 70) return PetMood.EXCITED;
+      if (happiness > 60) return PetMood.HAPPY;
+      return PetMood.CONTENT;
+    }
+
+    function updateMoodDisplay() {
+      const mood = getCurrentMood();
+      moodEl.textContent = mood;
+      petEmojiEl.textContent = moodEmojis[mood];
+    }
+
+    function applyAction(action) {
+      const now = Date.now();
+      const delta = (now - lastUpdate) / 1000;
+      lastUpdate = now;
+      // Light idle decay
+      hunger = clamp(hunger + delta * 2, 0, 100);
+      energy = clamp(energy + delta * 1, 0, 100);
+      happiness = clamp(happiness - delta * 1.5, 0, 100);
+      switch (action) {
+        case 'eat':
+          hunger = clamp(hunger - 28, 0, 100);
+          energy = clamp(energy + 18, 0, 100);
+          break;
+        case 'play':
+          energy = clamp(energy - 22, 0, 100);
+          happiness = clamp(happiness + 25, 0, 100);
+          break;
+        case 'sleep':
+          hunger = clamp(hunger + 20, 0, 100);
+          energy = clamp(energy + 38, 0, 100);
+          break;
+      }
+      updateStats();
+      updateMoodDisplay();
+    }
+
+    function idleDecay() {
+      const now = Date.now();
+      const delta = (now - lastUpdate) / 1000;
+      if (delta > 0.3) {
+        hunger = clamp(hunger + delta * 9, 0, 100);
+        energy = clamp(energy + delta * 4, 0, 100);
+        happiness = clamp(happiness - delta * 7, 0, 100);
+        lastUpdate = now;
+        updateStats();
+        updateMoodDisplay();
+      }
+    }
+    // Setup
+    startBtn.addEventListener('click', () => {
+      petName = petNameInput.value.trim();
+      if (!petName) return alert("Name your pet!");
+      namingScreen.style.display = 'none';
+      gameScreen.style.display = 'block';
+      petNameDisplay.textContent = petName.toUpperCase();
+      createStats();
+      updateStats();
+      updateMoodDisplay();
+      lastUpdate = Date.now();
+    });
+    document.getElementById('eat-action').addEventListener('click', () => applyAction('eat'));
+    document.getElementById('play-action').addEventListener('click', () => applyAction('play'));
+    document.getElementById('sleep-action').addEventListener('click', () => applyAction('sleep'));
+    // Idle simulation
+    setInterval(idleDecay, 700);
+    // Initial form is visible on load
+  </script>
+</body>
+
+</html>
